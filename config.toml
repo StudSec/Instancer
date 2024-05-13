@@ -1,0 +1,9 @@
+[servers]
+
+[servers.hostname1]
+ip = "127.0.0.1"
+port = "22"
+user = "root"
+
+[servers.another_host]
+ip = "127.1.1.1"
