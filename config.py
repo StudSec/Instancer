@@ -11,6 +11,8 @@ class Config:
         with open(config_path, "rb") as config:
             data = tomllib.load(config)
 
+            self.api = data["api"]
+
             self.compose_path = data["docker"]["compose_path"]
             self.challenges = parse_compose(self.compose_path)
 
