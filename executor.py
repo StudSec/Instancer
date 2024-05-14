@@ -1,24 +1,25 @@
 from config import Config
 from shlex import quote
-from git import Git
-from os.path import join, dirname
+from os.path import join, dirname, basename
 from logging import getLogger
+from tempfile import NamedTemporaryFile
+from shutil import make_archive
 
 log = getLogger(__name__)
 
-def project_files(base_dir: str):
-    g = Git(base_dir)
-    return g.ls_files().splitlines()
-
-def setup_env(server, base_dir, files):
+def setup_env(server, tar):
     server.connection.run(f"rm -rf {quote(server.path)}")
     server.connection.run(f"mkdir -p {quote(server.path)}")
-    for file in files:
-        from_path = join(base_dir, file)
-        to_path = join(server.path, file)
-        log.info(f"[{server.hostname}]\tUploading '{from_path}' to '{to_path}'")
-        server.connection.run(f"mkdir -p {quote(join(server.path, dirname(file)))}")
-        server.connection.put(from_path, to_path)
+
+    to_path = join(server.path, basename(tar))
+    log.info(f"[{server.hostname}]\tputting {tar} to {to_path}")
+    server.connection.put(tar, to_path)
+
+    extract_cmd = f"tar -xf {quote(to_path)} --directory {quote(server.path)}"
+    log.info(f"[{server.hostname}]\tRunning {extract_cmd}")
+    server.connection.run(extract_cmd)
+
+    server.connection.run(f"rm -f {quote(to_path)}")
 
 
 class Executor:
@@ -28,7 +29,13 @@ class Executor:
     def create_enviroment(self):
         # List all the files that have to be uploaded
         base_dir = dirname(self.config.compose_path)
-        files = project_files(base_dir)
 
-        log.info(f"Found {len(files)} project files")
-        self.config.pool.starmap(setup_env, [(server, base_dir, files) for server in self.config.servers])
+        with NamedTemporaryFile(delete_on_close=False) as f:
+            log.info(f"Making archive of {base_dir}")
+            archive_name = make_archive(
+                f.name,
+                "tar",
+                base_dir)
+
+            log.info(f"Sending archive to {len(self.config.servers)} servers")
+            self.config.pool.starmap(setup_env, [(server, archive_name) for server in self.config.servers])

@@ -1,7 +1,9 @@
+import asyncio
 from config import Config
 from executor import Executor
 from api import app
-from uvicorn import run
+from hypercorn.config import Config as HypercornConfig
+from hypercorn.asyncio import serve
 import logging
 
 def main():
@@ -12,7 +14,9 @@ def main():
     executor = Executor(config)
     executor.create_enviroment()
 
-    run(app, host=config.api["ip"], port=config.api["port"])
+    hypercorn = HypercornConfig()
+    hypercorn.bind = [f"{config.api["ip"]}:{config.api["port"]}"]
+    asyncio.run(serve(app, hypercorn))
 
 if __name__ == "__main__":
     main()
