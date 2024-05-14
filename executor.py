@@ -1,3 +1,4 @@
+import asyncio
 from config import Config
 from shlex import quote
 from os.path import join, dirname, basename
@@ -39,3 +40,29 @@ class Executor:
 
             log.info(f"Sending archive to {len(self.config.servers)} servers")
             self.config.pool.starmap(setup_env, [(server, archive_name) for server in self.config.servers])
+
+    async def current_compose_projects(self):
+        def request_projects(server):
+            cmd = "docker compose ls --format json"
+            try:
+                result = server.connection.run(cmd, hide=True)
+                return result.stdout.strip()
+            except Exception as e:
+                log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
+
+        print(await asyncio.gather(
+            *[asyncio.to_thread(request_projects, server) for server in self.config.servers]
+        ))
+
+    async def current_challenges(self):
+        pass
+
+    async def start_challenge(self, user_id, challenge_name):
+        pass
+
+    async def stop_challenge(self, user_id, challenge_name):
+        pass
+
+    async def challenge_status(self, user_id, challenge_name):
+        pass
+

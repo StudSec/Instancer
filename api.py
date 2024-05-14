@@ -1,15 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 
 app = FastAPI()
 
-@app.get("/start/{challenge_id}")
-async def start_challenge(challenge_id: int):
-    return {challenge_id}
+@app.get("/start/{user_id}/{service_name}")
+async def start_challenge(user_id: str, service_name: str):
+    challenges = app.extra["config"].challenges
+    if service_name not in challenges:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Challenge '{service_name}' not found"
+        )
 
-@app.get("/stop/{challenge_id}")
-async def stop_challenge(challenge_id: int):
-    return {challenge_id}
+    await app.extra["executor"].current_compose_projects()
+    
+    return {service_name}
 
-@app.get("/status/{challenge_id}")
-async def challenge_status(challenge_id: int):
-    return {challenge_id}
+@app.get("/stop/{user_id}/{service_name}")
+async def stop_challenge(user_id: str, service_name: str):
+    return {user_id}
+
+@app.get("/status/{user_id}/{challenge_id}")
+async def challenge_status(user_id: str, service_name: str):
+    return {user_id}
