@@ -39,13 +39,15 @@ def parse_servers(hosts):
 # docker-compose -p [team name] port powerpc 5000
 
 class Servers(ThreadingGroup):
-    def __init__(self, servers: list[Server]):
+    def __init__(self, servers: list[Server], keyfile: str):
         connection_strings = [server.connection_str() for server in servers]
-        super().__init__(*connection_strings)
+
+        kwargs = {'key_filename': keyfile}
+
+        super().__init__(*connection_strings, connect_kwargs=kwargs)
 
     def load(self):
         try:
             self.run("uptime");
         except GroupException as e:
             warning(f"Failed to get load: {e}")
-

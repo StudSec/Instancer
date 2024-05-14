@@ -10,5 +10,7 @@ class Config:
             data = tomllib.load(config)
             self.challenges = parse_compose(data["docker"]["compose_path"])
 
+            self.keyfile = data["ssh"]["keyfile"]
+
             self._servers = parse_servers(data["servers"])
-            self.servers = Servers(self._servers)
+            self.servers = Servers(self._servers, self.keyfile)
