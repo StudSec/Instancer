@@ -6,6 +6,7 @@ from hypercorn.config import Config as HypercornConfig
 from hypercorn.asyncio import serve
 import logging
 
+
 def main():
     logging.basicConfig(level=logging.INFO)
 
@@ -15,8 +16,9 @@ def main():
     executor.create_enviroment()
 
     hypercorn = HypercornConfig()
-    hypercorn.bind = [f"{config.api["ip"]}:{config.api["port"]}"]
+    hypercorn.bind = [f"{config.api['ip']}:{config.api['port']}"]
     asyncio.run(serve(app, hypercorn))
+
 
 if __name__ == "__main__":
     main()

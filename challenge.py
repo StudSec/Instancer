@@ -1,6 +1,8 @@
 from yaml import safe_load
 from logging import getLogger
+
 log = getLogger(__name__)
+
 
 class Challenge:
     def __init__(self, name: str, config: dict) -> None:
@@ -30,11 +32,10 @@ class Port:
         else:
             self.proto = proto[1]
 
-
         parts = proto[0].split(":")
         if len(parts) != 1:
             log.warning(f"Hardcoded port on the host specified in '{ports}' for challenge {challenge_name}, " +
-                    "WILL cause problems when deploying and running out of ports")
+                        "WILL cause problems when deploying and running out of ports")
         self.port = parts[-1]
 
 

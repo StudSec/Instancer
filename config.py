@@ -5,7 +5,9 @@ from server import parse_servers
 from multiprocessing import Pool
 
 from logging import getLogger
+
 log = getLogger(__name__)
+
 
 class Config:
     def __init__(self, config_path: str) -> None:

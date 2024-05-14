@@ -1,6 +1,8 @@
 from fabric import Connection
 from logging import getLogger
+
 log = getLogger(__name__)
+
 
 class Server:
     def __init__(self, hostname, ip, port, user, path):
@@ -12,7 +14,7 @@ class Server:
         self.connection = None
 
     def connect(self, keyfile: str):
-        self.connection = Connection(f"{self.user}@{self.ip}:{self.port}", connect_kwargs = {
+        self.connection = Connection(f"{self.user}@{self.ip}:{self.port}", connect_kwargs={
             "key_filename": keyfile
         })
 

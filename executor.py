@@ -7,6 +7,7 @@ from shutil import make_archive
 
 log = getLogger(__name__)
 
+
 def setup_env(server, tar):
     server.connection.run(f"rm -rf {quote(server.path)}")
     server.connection.run(f"mkdir -p {quote(server.path)}")
