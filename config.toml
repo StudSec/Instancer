@@ -1,3 +1,6 @@
+[docker]
+compose_path = "../../CTF/VUCTF-2024-Challenges/docker-compose.yml"
+
 [servers]
 
 [servers.hostname1]
