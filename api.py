@@ -11,7 +11,7 @@ async def start_challenge(user_id: str, service_name: str):
             detail=f"Challenge '{service_name}' not found"
         )
 
-    await app.extra["executor"].current_compose_projects()
+    await app.extra["executor"].get_available_server()
     
     return {service_name}
 

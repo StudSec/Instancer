@@ -5,6 +5,7 @@ from os.path import join, dirname, basename
 from logging import getLogger
 from tempfile import NamedTemporaryFile
 from shutil import make_archive
+from server import Server
 
 log = getLogger(__name__)
 
@@ -41,23 +42,48 @@ class Executor:
             log.info(f"Sending archive to {len(self.config.servers)} servers")
             self.config.pool.starmap(setup_env, [(server, archive_name) for server in self.config.servers])
 
-    async def current_compose_projects(self):
-        def request_projects(server):
-            cmd = "docker compose ls --format json"
+    async def run_all(self, cmd) -> list[tuple[Server, str]]:
+        def runner(server) -> tuple[Server, str | None]:
             try:
                 result = server.connection.run(cmd, hide=True)
-                return result.stdout.strip()
+                return (server, result.stdout.strip())
             except Exception as e:
                 log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
+                return (server, None)
 
-        print(await asyncio.gather(
-            *[asyncio.to_thread(request_projects, server) for server in self.config.servers]
-        ))
+        result = await asyncio.gather(
+            *[asyncio.to_thread(runner, server) for server in self.config.servers]
+        )
+        return [(server, response) for (server, response) in result if response != None]
+
+    async def run(self, server, cmd):
+        def runner(server) -> tuple[Server, str | None]:
+            try:
+                result = server.connection.run(cmd, hide=True)
+                return (server, result.stdout.strip())
+            except Exception as e:
+                log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
+                return (server, None)
+
+        return await asyncio.to_thread(runner, server)
+
+    async def current_compose_projects(self):
+        await self.run_all("docker compose ls --format json")
+
+    async def get_available_server(self) -> Server | None:
+        loads = await self.run_all("cat /proc/loadavg | awk '{ print $1}'")
+
+        if len(loads) == 0:
+            return None
+
+        (idlest_server, _) = min(loads, key = lambda l : l[1])
+        return idlest_server
 
     async def current_challenges(self):
         pass
 
     async def start_challenge(self, user_id, challenge_name):
+        # TODO: check if the challenge already exists / is being started to prevent it from starting several times
         pass
 
     async def stop_challenge(self, user_id, challenge_name):
