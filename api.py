@@ -1,6 +1,7 @@
 from typing import Annotated
 from asyncio import create_task
 from fastapi import FastAPI, HTTPException, status, Path
+from database import ChallengeState
 
 app = FastAPI()
 background_tasks = set()
@@ -19,11 +20,14 @@ def does_challenge_exist(app: FastAPI, service_name: str):
 async def start_challenge(
         user_id: Annotated[str, Path(pattern=ALPHANUM)], 
         service_name: Annotated[str, Path(pattern=ALPHANUM)]):
-
     does_challenge_exist(app, service_name)
 
     executor = app.extra["executor"]
     challenge = app.extra["config"].challenges[service_name]
+
+    state = await ChallengeState(app.extra["config"].database, service_name, user_id).get()
+    if state is not None and state != "failed":
+        return {"already starting"}
 
     task = create_task(challenge.start(executor, user_id))
     background_tasks.add(task)

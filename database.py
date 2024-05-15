@@ -7,6 +7,13 @@ class ChallengeState:
         self.challenge_name = challenge_name
         self.user_id = user_id
 
+    async def get(self):
+        state = await self.get_with_reason()
+        if state is None:
+            return None
+        st, _ = state
+        return st
+
     async def create_challenge(self):
         async with connect(self.db.file) as db:
             await db.execute("INSERT INTO challenges \
@@ -15,7 +22,7 @@ class ChallengeState:
                 (self.challenge_name, self.user_id, "created", ""))
             await db.commit()
 
-    async def get(self):
+    async def get_with_reason(self):
         async with connect(self.db.file) as db:
             res = await db.execute("SELECT state, reason FROM challenges \
                 WHERE name=? AND user_id=? LIMIT 1",

@@ -30,10 +30,14 @@ class Challenge:
         db = executor.config.database
         state = ChallengeState(db, self.name, user_id)
 
-        if await state.get() is None:
-            await state.create_challenge()
+        s = await state.get()
+        if s is not None:
+            if s == "failed":
+                await state.set("scheduled")
+            else:
+                return
         else:
-            return
+            await state.create_challenge()
 
         await state.set("allocating")
 # docker-compose -p [team name] up -d powerpc
