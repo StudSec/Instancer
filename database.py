@@ -36,6 +36,22 @@ class ChallengeState:
                 (state, reason, self.challenge_name, self.user_id))
             await db.commit()
 
+    async def delete(self):
+        async with connect(self.db.file) as db:
+            await db.execute("DELETE FROM challenges WHERE name=? AND user_id=?",
+                (self.challenge_name, self.user_id))
+            await db.commit()
+
+    async def delete_and_insert(self, state):
+        async with connect(self.db.file) as db:
+            await db.execute("DELETE FROM challenges WHERE name=? AND user_id=?",
+                (self.challenge_name, self.user_id))
+            await db.execute("INSERT INTO challenges \
+                (name, user_id, state, reason) \
+                VALUES (?, ?, ?, ?)",
+                (self.challenge_name, self.user_id, state, ""))
+            await db.commit()
+
 class Database():
     def __init__(self, file: str) -> None:
         self.file = file
