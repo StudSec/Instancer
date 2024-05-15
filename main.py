@@ -1,9 +1,9 @@
 import asyncio
 from config import Config
 from executor import Executor
-from api import app
 from hypercorn.config import Config as HypercornConfig
 from hypercorn.asyncio import serve
+from api import app
 import logging
 
 
@@ -13,7 +13,12 @@ def main():
     config = Config("config.toml")
 
     executor = Executor(config)
-    executor.create_enviroment()
+    # executor.create_enviroment()
+
+    app.extra = {
+        "config": config,
+        "executor": executor
+    }
 
     hypercorn = HypercornConfig()
     hypercorn.bind = [f"{config.api['ip']}:{config.api['port']}"]

@@ -14,13 +14,13 @@ user = "root"
 path = "/deployment"
 
 [servers.node1]
-ip = "10.191.0.143"
+ip = "10.191.0.206"
 port = "22"
 user = "root"
 path = "/srv"
 
 [servers.node2]
-ip = "10.191.0.233"
+ip = "10.191.0.133"
 
 [servers.node3]
-ip = "10.191.0.197"
+ip = "10.191.0.222"

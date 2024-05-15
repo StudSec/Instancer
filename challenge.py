@@ -23,7 +23,6 @@ class Challenge:
                 if "limits" not in config["deploy"]["resources"]:
                     log.warning(f"No limits label in resources of {name}. {r}")
 
-
 class Port:
     def __init__(self, challenge_name: str, ports: str) -> None:
         proto = ports.split("/")
@@ -39,18 +38,18 @@ class Port:
         self.port = parts[-1]
 
 
-def parse_compose(path: str) -> list[Challenge]:
+def parse_compose(path: str) -> dict[str, Challenge]:
     with open(path) as f:
         data = safe_load(f)
         services = data["services"]
 
-        challenges = list()
+        challenges = dict()
         for name in services:
             config = services[name]
 
             # Only challenges with exposed ports are treated as challenges
             if "ports" in config:
                 challenge = Challenge(name, services[name])
-                challenges.append(challenge)
+                challenges[name] = challenge
 
         return challenges
