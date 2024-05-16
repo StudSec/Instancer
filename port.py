@@ -3,6 +3,7 @@ log = getLogger(__name__)
 
 class Port:
     def __init__(self, challenge_name: str, ports: str) -> None:
+        ports = str(ports)
         proto = ports.split("/")
         if len(proto) == 1:
             self.proto = None

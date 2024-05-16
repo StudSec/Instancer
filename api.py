@@ -44,6 +44,11 @@ async def stop_challenge(
         user_id: Annotated[str, Path(pattern=ALPHANUM)], 
         service_name: Annotated[str, Path(pattern=ALPHANUM)]):
     does_challenge_exist(app, service_name)
+    executor = app.extra["executor"]
+    challenge = app.extra["config"].challenges[service_name]
+    await challenge.retrieve_state(executor, user_id)
+
+
     return {user_id}
 
 @app.get("/status/{user_id}/{service_name}")
@@ -68,6 +73,3 @@ async def challenge_status(
         if state == "failed":
             r['reason'] = reason
     return r
-
-    
-    return {user_id}

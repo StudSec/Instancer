@@ -87,7 +87,7 @@ class Challenge:
 
     async def start(self, executor, user_id: str):
         # If we're already starting this challenge, don't try to start it again
-        if not await self.starting_challenges.contains_or_insert(self.name):
+        if not await self.starting_challenges.contains_or_insert(user_id):
             return
 
         db = executor.config.database
@@ -100,7 +100,7 @@ class Challenge:
                 await state.set("scheduled")
             elif s == "running":
                 # The challenge is already running, so stop trying to start it
-                await self.starting_challenges.remove(self.name)
+                await self.starting_challenges.remove(user_id)
                 return
             else:
                 # The challenge is in another state, so it is marked as starting
@@ -114,7 +114,7 @@ class Challenge:
         target_server = await executor.get_available_server()
         if target_server is None:
             await state.set("failed", "no server available")
-            await self.starting_challenges.remove(self.name)
+            await self.starting_challenges.remove(user_id)
             return
 
         base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
@@ -122,21 +122,21 @@ class Challenge:
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "building images failed")
-            await self.starting_challenges.remove(self.name)
+            await self.starting_challenges.remove(user_id)
             return
 
         cmd = f"{base_cmd} down {self.name}" 
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed shutting down service")
-            await self.starting_challenges.remove(self.name)
+            await self.starting_challenges.remove(user_id)
             return
 
         cmd = f"{base_cmd} up -d {self.name}" 
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed starting service")
-            await self.starting_challenges.remove(self.name)
+            await self.starting_challenges.remove(user_id)
             return
 
         ports = []
@@ -145,13 +145,13 @@ class Challenge:
             result = await executor.run(target_server, cmd)
             if result is None:
                 await state.set("failed", "failed to get ports")
-                await self.starting_challenges.remove(self.name)
+                await self.starting_challenges.remove(user_id)
                 return
             ports.append(result.split(":")[-1])
 
         ports = [f"{target_server.ip}:{port}" for port in ports]
         await state.set("running", str(ports))
-        await self.starting_challenges.remove(self.name)
+        await self.starting_challenges.remove(user_id)
 
     async def stop(self, executor, user_id: str):
         pass

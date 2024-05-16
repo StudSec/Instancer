@@ -12,7 +12,7 @@ def main():
     config = Config("config.toml")
 
     executor = Executor(config)
-    # executor.create_enviroment()
+    executor.create_enviroment()
 
     app.extra = {
         "config": config,
