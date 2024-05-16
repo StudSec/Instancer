@@ -32,8 +32,6 @@ async def start_challenge(
     if state is not None:
         if state == "running":
             return {"already running"}
-        if state != "failed":
-            return {"already starting"}
 
     task = create_task(challenge.start(executor, user_id))
     background_tasks.add(task)
@@ -42,7 +40,10 @@ async def start_challenge(
     return {"ok"}
 
 @app.get("/stop/{user_id}/{service_name}")
-async def stop_challenge(user_id: str, service_name: str):
+async def stop_challenge(
+        user_id: Annotated[str, Path(pattern=ALPHANUM)], 
+        service_name: Annotated[str, Path(pattern=ALPHANUM)]):
+    does_challenge_exist(app, service_name)
     return {user_id}
 
 @app.get("/status/{user_id}/{service_name}")
