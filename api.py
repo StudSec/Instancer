@@ -1,10 +1,11 @@
 from typing import Annotated
-from asyncio import create_task
+from asyncio import create_task, Lock
 from fastapi import FastAPI, HTTPException, status, Path
 from database import ChallengeState
 from json import dumps
 
 app = FastAPI()
+
 background_tasks = set()
 
 ALPHANUM = "^[a-zA-Z0-9_]*$"
@@ -31,13 +32,15 @@ async def start_challenge(
     state = await ChallengeState(app.extra["config"].database, service_name, user_id).get()
     if state is not None:
         if state == "running":
-            return {"already running"}
+            return {"running"}
 
-    task = create_task(challenge.start(executor, user_id))
-    background_tasks.add(task)
-    task.add_done_callback(background_tasks.discard)
-
-    return {"ok"}
+    if await challenge.working_set.contains_or_insert(user_id):
+        task = create_task(challenge.start(executor, user_id))
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
+        return {"starting"}
+    else:
+        return {"still working on it"}
 
 @app.get("/stop/{user_id}/{service_name}")
 async def stop_challenge(
@@ -48,8 +51,19 @@ async def stop_challenge(
     challenge = app.extra["config"].challenges[service_name]
     await challenge.retrieve_state(executor, user_id)
 
+    state = await ChallengeState(app.extra["config"].database, service_name, user_id).get()
+    if state is not None:
+        if state != "running":
+            return {"not running"}
 
-    return {user_id}
+    if await challenge.working_set.contains_or_insert(user_id):
+        task = create_task(challenge.stop(executor, user_id))
+        background_tasks.add(task)
+        task.add_done_callback(background_tasks.discard)
+        return {"stopping"}
+    else:
+        return {"still working on it"}
+
 
 @app.get("/status/{user_id}/{service_name}")
 async def challenge_status(

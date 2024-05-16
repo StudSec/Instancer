@@ -28,7 +28,7 @@ class Challenge:
                 if "limits" not in config["deploy"]["resources"]:
                     log.warning(f"No limits label in resources of {name}. {r}")
 
-        class StartingInstances:
+        class WorkingSet:
             def __init__(self) -> None:
                 self.challenges = set()
                 self.lock = asyncio.Lock()
@@ -50,9 +50,13 @@ class Challenge:
                     self.challenges.remove(user_id)
 
 
-        self.starting_challenges = StartingInstances()
+        self.working_set = WorkingSet()
 
     async def retrieve_state(self, executor, user_id: str):
+        db_entry = ChallengeState(executor.config.database, self.name, user_id)
+        if await db_entry.get() is None:
+            await db_entry.create_challenge()
+
         async def retrieve(server):
             cmd = f"docker compose -p {quote(user_id)} --project-directory {server.path} ps --format json"
             result = await executor.run(server, cmd)
@@ -71,11 +75,11 @@ class Challenge:
                 idx = i
                 break
 
-        db_entry = ChallengeState(executor.config.database, self.name, user_id)
         if idx is None:
             await db_entry.set("stopped", "challenge not found on a server")
             return
 
+        await db_entry.set_server(idx)
         entry = result[idx][0]
         server = executor.config.servers[idx]
 
@@ -86,10 +90,6 @@ class Challenge:
         await db_entry.set(entry["State"], str(ports))
 
     async def start(self, executor, user_id: str):
-        # If we're already starting this challenge, don't try to start it again
-        if not await self.starting_challenges.contains_or_insert(user_id):
-            return
-
         db = executor.config.database
         state = ChallengeState(db, self.name, user_id)
 
@@ -100,7 +100,7 @@ class Challenge:
                 await state.set("scheduled")
             elif s == "running":
                 # The challenge is already running, so stop trying to start it
-                await self.starting_challenges.remove(user_id)
+                await self.working_set.remove(user_id)
                 return
             else:
                 # The challenge is in another state, so it is marked as starting
@@ -114,7 +114,7 @@ class Challenge:
         target_server = await executor.get_available_server()
         if target_server is None:
             await state.set("failed", "no server available")
-            await self.starting_challenges.remove(user_id)
+            await self.working_set.remove(user_id)
             return
 
         base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
@@ -122,21 +122,21 @@ class Challenge:
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "building images failed")
-            await self.starting_challenges.remove(user_id)
+            await self.working_set.remove(user_id)
             return
 
         cmd = f"{base_cmd} down {self.name}" 
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed shutting down service")
-            await self.starting_challenges.remove(user_id)
+            await self.working_set.remove(user_id)
             return
 
         cmd = f"{base_cmd} up -d {self.name}" 
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed starting service")
-            await self.starting_challenges.remove(user_id)
+            await self.working_set.remove(user_id)
             return
 
         ports = []
@@ -145,16 +145,27 @@ class Challenge:
             result = await executor.run(target_server, cmd)
             if result is None:
                 await state.set("failed", "failed to get ports")
-                await self.starting_challenges.remove(user_id)
+                await self.working_set.remove(user_id)
                 return
             ports.append(result.split(":")[-1])
 
         ports = [f"{target_server.ip}:{port}" for port in ports]
         await state.set("running", str(ports))
-        await self.starting_challenges.remove(user_id)
+        await self.working_set.remove(user_id)
 
     async def stop(self, executor, user_id: str):
-        pass
+        db = ChallengeState(executor.config.database, self.name, user_id)
+        server = await db.get_server()
+        if server is None:
+            await self.working_set.remove(user_id)
+            return
+        
+        target_server = executor.config.servers[server]
+        base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
+        cmd = f"{base_cmd} down {self.name}" 
+        await executor.run(target_server, cmd)
+        await db.delete();
+        await self.working_set.remove(user_id)
 
 
 def parse_compose(path: str) -> dict[str, Challenge]:

@@ -36,6 +36,24 @@ class ChallengeState:
                 (state, reason, self.challenge_name, self.user_id))
             await db.commit()
 
+    async def set_server(self, server_idx: int):
+        async with connect(self.db.file) as db:
+            await db.execute("UPDATE challenges SET server=?\
+                WHERE name=? AND user_id=?",
+                (server_idx, self.challenge_name, self.user_id))
+            await db.commit()
+
+    async def get_server(self) -> int | None:
+        async with connect(self.db.file) as db:
+            res = await db.execute("SELECT server FROM challenges \
+                WHERE name=? AND user_id=? LIMIT 1",
+                (self.challenge_name, self.user_id))
+            res = await res.fetchone()
+            if res is None:
+                return None
+            else:
+                return res[0]
+
     async def delete(self):
         async with connect(self.db.file) as db:
             await db.execute("DELETE FROM challenges WHERE name=? AND user_id=?",
@@ -62,6 +80,7 @@ class Database():
             await db.execute("CREATE TABLE IF NOT EXISTS challenges ( \
                 name TEXT NOT NULL, \
                 user_id TEXT NOT NULL, \
+                server INTEGER, \
                 state TEXT NOT NULL,\
                 reason TEXT NOT NULL,\
                 PRIMARY KEY (name, user_id) \
