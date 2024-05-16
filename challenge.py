@@ -59,7 +59,7 @@ class Challenge:
 
         async def retrieve(server):
             cmd = f"docker compose -p {quote(user_id)} --project-directory {server.path} ps --format json"
-            result = await executor.run(server, cmd)
+            result = await executor.run(server, cmd, timeout = 1)
             if result is None:
                 return []
             services = [json.loads(service) for service in result.splitlines()]
