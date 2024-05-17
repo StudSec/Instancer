@@ -1,7 +1,7 @@
 from typing import Annotated
 from asyncio import create_task
 from fastapi import FastAPI, HTTPException, status, Path
-from database import ChallengeState
+from webapp.database import ChallengeState
 from logging import getLogger
 
 log = getLogger(__name__)

@@ -35,7 +35,7 @@ async def server(config, executor):
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    config = Config("../config.toml")
+    config = Config("config.toml")
 
     executor = Executor(config)
 

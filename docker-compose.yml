@@ -3,6 +3,6 @@ services:
     build:
       context: .
     volumes:
-      - ./data/challenges/Challenges/:/challenges
-      - ./data/instancer/keys/:/app/keys
-      - ./data/instancer/config.toml:/app/config.toml
+      - ./challenges/Challenges/:/challenges
+      - ./keys/:/app/keys
+      - ./config.toml:/app/config.toml

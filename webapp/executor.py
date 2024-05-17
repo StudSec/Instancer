@@ -5,7 +5,7 @@ from os.path import join, dirname, basename
 from logging import getLogger
 from tempfile import NamedTemporaryFile
 from shutil import make_archive
-from server import Server
+from webapp.server import Server
 
 log = getLogger(__name__)
 

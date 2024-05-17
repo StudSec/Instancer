@@ -4,8 +4,8 @@ from shlex import quote
 from yaml import safe_load
 from logging import getLogger
 
-from database import ChallengeState
-from port import Port
+from webapp.database import ChallengeState
+from webapp.port import Port
 
 log = getLogger(__name__)
 

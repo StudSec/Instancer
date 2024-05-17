@@ -1,8 +1,8 @@
 import tomllib
 
-from challenge import parse_compose
-from server import parse_servers
-from database import Database
+from webapp.challenge import parse_compose
+from webapp.server import parse_servers
+from webapp.database import Database
 
 from multiprocessing import Pool
 
