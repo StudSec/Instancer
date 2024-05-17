@@ -11,8 +11,12 @@ async def server(config, executor):
 
     async def update_challenges():
         while True:
-            await asyncio.sleep(60*5)
-            await executor.create_enviroment()
+            try:
+                await asyncio.sleep(60*5)
+                await executor.create_enviroment()
+            except Exception as e:
+                log = logging.getLogger(__name__)
+                log.warn(f"Something went wrong while creating environment: {e}")
     
     app.extra = {
         "config": config,
