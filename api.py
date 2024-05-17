@@ -12,6 +12,7 @@ background_tasks = set()
 
 ALPHANUM = "^[a-z0-9_]*$"
 
+
 def does_challenge_exist(app: FastAPI, service_name: str):
     challenges = app.extra["config"].challenges
     if service_name not in challenges:
@@ -20,9 +21,10 @@ def does_challenge_exist(app: FastAPI, service_name: str):
             detail=f"Challenge '{service_name}' not found"
         )
 
+
 @app.get("/start/{user_id}/{service_name}")
 async def start_challenge(
-        user_id: Annotated[str, Path(pattern=ALPHANUM)], 
+        user_id: Annotated[str, Path(pattern=ALPHANUM)],
         service_name: Annotated[str, Path(pattern=ALPHANUM)]):
     try:
         does_challenge_exist(app, service_name)
@@ -48,9 +50,10 @@ async def start_challenge(
         log.warn(f"Error occured in start API: {e}")
         return {"something went wrong"}
 
+
 @app.get("/stop/{user_id}/{service_name}")
 async def stop_challenge(
-        user_id: Annotated[str, Path(pattern=ALPHANUM)], 
+        user_id: Annotated[str, Path(pattern=ALPHANUM)],
         service_name: Annotated[str, Path(pattern=ALPHANUM)]):
     try:
         does_challenge_exist(app, service_name)
@@ -77,7 +80,7 @@ async def stop_challenge(
 
 @app.get("/status/{user_id}/{service_name}")
 async def challenge_status(
-        user_id: Annotated[str, Path(pattern=ALPHANUM)], 
+        user_id: Annotated[str, Path(pattern=ALPHANUM)],
         service_name: Annotated[str, Path(pattern=ALPHANUM)]):
     try:
         does_challenge_exist(app, service_name)

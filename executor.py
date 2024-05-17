@@ -9,7 +9,8 @@ from server import Server
 
 log = getLogger(__name__)
 
-def runner(server, cmd, timeout = None) -> tuple[Server, str | None]:
+
+def runner(server, cmd, timeout=None) -> tuple[Server, str | None]:
     try:
         log.info(f"[{server.hostname}]\tRunning command '{cmd}'")
         result = server.connection.run(cmd, hide=True, timeout=timeout)
@@ -17,6 +18,7 @@ def runner(server, cmd, timeout = None) -> tuple[Server, str | None]:
     except Exception as e:
         log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
         return (server, None)
+
 
 class Executor:
     def __init__(self, config: Config):
@@ -29,9 +31,9 @@ class Executor:
         with NamedTemporaryFile(delete_on_close=False) as f:
             log.info(f"Making archive of {base_dir}")
             archive_name = await asyncio.to_thread(make_archive,
-                f.name,
-                "tar",
-                base_dir)
+                                                   f.name,
+                                                   "tar",
+                                                   base_dir)
 
             log.info(f"Sending archive to {len(self.config.servers)} servers")
 
@@ -56,13 +58,13 @@ class Executor:
                 *[send_archive(server, archive_name) for server in self.config.servers]
             )
 
-    async def run_all(self, cmd, timeout = None) -> list[tuple[Server, str]]:
+    async def run_all(self, cmd, timeout=None) -> list[tuple[Server, str]]:
         result = await asyncio.gather(
             *[asyncio.to_thread(runner, server, cmd, timeout) for server in self.config.servers]
         )
         return [(server, response) for (server, response) in result if response != None]
 
-    async def run(self, server, cmd, timeout = None) -> str | None:
+    async def run(self, server, cmd, timeout=None) -> str | None:
         _, result = await asyncio.to_thread(runner, server, cmd, timeout)
         return result
 
@@ -75,7 +77,7 @@ class Executor:
         if len(loads) == 0:
             return None
 
-        (idlest_server, _) = min(loads, key = lambda l : l[1])
+        (idlest_server, _) = min(loads, key=lambda l: l[1])
         return idlest_server
 
     async def current_challenges(self):

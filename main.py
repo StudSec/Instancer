@@ -6,18 +6,19 @@ from hypercorn.asyncio import serve
 from api import app
 import logging
 
+
 async def server(config, executor):
     await executor.create_enviroment()
 
     async def update_challenges():
         while True:
             try:
-                await asyncio.sleep(60*5)
+                await asyncio.sleep(60 * 5)
                 await executor.create_enviroment()
             except Exception as e:
                 log = logging.getLogger(__name__)
                 log.warn(f"Something went wrong while creating environment: {e}")
-    
+
     app.extra = {
         "config": config,
         "executor": executor
@@ -30,6 +31,7 @@ async def server(config, executor):
         update_challenges()
     )
 
+
 def main():
     logging.basicConfig(level=logging.INFO)
 
@@ -38,6 +40,7 @@ def main():
     executor = Executor(config)
 
     asyncio.run(server(config, executor))
+
 
 if __name__ == "__main__":
     main()

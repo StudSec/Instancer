@@ -9,6 +9,7 @@ from port import Port
 
 log = getLogger(__name__)
 
+
 class Challenge:
     def __init__(self, name: str, config: dict) -> None:
         self.name = name
@@ -49,7 +50,6 @@ class Challenge:
                 async with self.lock:
                     self.challenges.remove(user_id)
 
-
         self.working_set = WorkingSet()
 
     async def retrieve_state(self, executor, user_id: str):
@@ -59,7 +59,7 @@ class Challenge:
 
         async def retrieve(server):
             cmd = f"docker compose -p {quote(user_id)} --project-directory {server.path} ps --format json"
-            result = await executor.run(server, cmd, timeout = 1)
+            result = await executor.run(server, cmd, timeout=1)
             if result is None:
                 return []
             services = [json.loads(service) for service in result.splitlines()]
@@ -118,21 +118,21 @@ class Challenge:
             return
 
         base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
-        cmd = f"{base_cmd} build --with-dependencies {self.name}" 
+        cmd = f"{base_cmd} build --with-dependencies {self.name}"
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "building images failed")
             await self.working_set.remove(user_id)
             return
 
-        cmd = f"{base_cmd} down {self.name}" 
+        cmd = f"{base_cmd} down {self.name}"
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed shutting down service")
             await self.working_set.remove(user_id)
             return
 
-        cmd = f"{base_cmd} up -d {self.name}" 
+        cmd = f"{base_cmd} up -d {self.name}"
         result = await executor.run(target_server, cmd)
         if result is None:
             await state.set("failed", "failed starting service")
@@ -141,7 +141,7 @@ class Challenge:
 
         ports = []
         for port in self.ports:
-            cmd = f"{base_cmd} port {self.name} {port.port}" 
+            cmd = f"{base_cmd} port {self.name} {port.port}"
             result = await executor.run(target_server, cmd)
             if result is None:
                 await state.set("failed", "failed to get ports")
@@ -159,10 +159,10 @@ class Challenge:
         if server is None:
             await self.working_set.remove(user_id)
             return
-        
+
         target_server = executor.config.servers[server]
         base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
-        cmd = f"{base_cmd} down {self.name}" 
+        cmd = f"{base_cmd} down {self.name}"
         await executor.run(target_server, cmd)
         await db.delete();
         await self.working_set.remove(user_id)
