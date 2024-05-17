@@ -2,8 +2,11 @@
 ip = "localhost"
 port = 8000
 
+[database]
+path = "database.sqlite3"
+
 [docker]
-compose_path = "../../CTF/VUCTF-2024-Challenges/docker-compose.yml"
+compose_path = "/challenges/docker-compose.yml"
 
 [ssh]
 keyfile = "keys/key"
@@ -14,7 +17,7 @@ user = "root"
 path = "/deployment"
 
 [servers.node1]
-ip = "10.191.0.206"
+ip = "10.191.0.205"
 port = "22"
 user = "root"
 path = "/srv"

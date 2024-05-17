@@ -2,6 +2,8 @@ import tomllib
 
 from challenge import parse_compose
 from server import parse_servers
+from database import Database
+
 from multiprocessing import Pool
 
 from logging import getLogger
@@ -24,6 +26,8 @@ class Config:
             self.keyfile = data["ssh"]["keyfile"]
 
             self.servers = parse_servers(data["servers"])
+
+            self.database = Database(data["database"]["path"])
 
             for server in self.servers:
                 server.connect(self.keyfile)

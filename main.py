@@ -6,6 +6,29 @@ from hypercorn.asyncio import serve
 from api import app
 import logging
 
+async def server(config, executor):
+    await executor.create_enviroment()
+
+    async def update_challenges():
+        while True:
+            try:
+                await asyncio.sleep(60*5)
+                await executor.create_enviroment()
+            except Exception as e:
+                log = logging.getLogger(__name__)
+                log.warn(f"Something went wrong while creating environment: {e}")
+    
+    app.extra = {
+        "config": config,
+        "executor": executor
+    }
+
+    hypercorn = HypercornConfig()
+    hypercorn.bind = [f"{config.api["ip"]}:{config.api["port"]}"]
+    await asyncio.gather(
+        serve(app, hypercorn),
+        update_challenges()
+    )
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -13,17 +36,8 @@ def main():
     config = Config("config.toml")
 
     executor = Executor(config)
-    # executor.create_enviroment()
 
-    app.extra = {
-        "config": config,
-        "executor": executor
-    }
-
-    hypercorn = HypercornConfig()
-    hypercorn.bind = [f"{config.api['ip']}:{config.api['port']}"]
-    asyncio.run(serve(app, hypercorn))
-
+    asyncio.run(server(config, executor))
 
 if __name__ == "__main__":
     main()

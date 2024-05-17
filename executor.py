@@ -9,67 +9,65 @@ from server import Server
 
 log = getLogger(__name__)
 
-
-def setup_env(server, tar):
-    server.connection.run(f"rm -rf {quote(server.path)}")
-    server.connection.run(f"mkdir -p {quote(server.path)}")
-
-    to_path = join(server.path, basename(tar))
-    log.info(f"[{server.hostname}]\tputting {tar} to {to_path}")
-    server.connection.put(tar, to_path)
-
-    extract_cmd = f"tar -xf {quote(to_path)} --directory {quote(server.path)}"
-    log.info(f"[{server.hostname}]\tRunning {extract_cmd}")
-    server.connection.run(extract_cmd)
-
-    server.connection.run(f"rm -f {quote(to_path)}")
-
+def runner(server, cmd, timeout = None) -> tuple[Server, str | None]:
+    try:
+        log.info(f"[{server.hostname}]\tRunning command '{cmd}'")
+        result = server.connection.run(cmd, hide=True, timeout=timeout)
+        return (server, result.stdout.strip())
+    except Exception as e:
+        log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
+        return (server, None)
 
 class Executor:
     def __init__(self, config: Config):
         self.config = config
 
-    def create_enviroment(self):
+    async def create_enviroment(self):
         # List all the files that have to be uploaded
         base_dir = dirname(self.config.compose_path)
 
         with NamedTemporaryFile(delete_on_close=False) as f:
             log.info(f"Making archive of {base_dir}")
-            archive_name = make_archive(
+            archive_name = await asyncio.to_thread(make_archive,
                 f.name,
                 "tar",
                 base_dir)
 
             log.info(f"Sending archive to {len(self.config.servers)} servers")
-            self.config.pool.starmap(setup_env, [(server, archive_name) for server in self.config.servers])
 
-    async def run_all(self, cmd) -> list[tuple[Server, str]]:
-        def runner(server) -> tuple[Server, str | None]:
-            try:
-                result = server.connection.run(cmd, hide=True)
-                return (server, result.stdout.strip())
-            except Exception as e:
-                log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
-                return (server, None)
+            async def send_archive(server, tar):
+                try:
+                    await self.run(server, f"rm -rf {quote(server.path)}")
+                    await self.run(server, f"mkdir -p {quote(server.path)}")
 
+                    to_path = join(server.path, basename(tar))
+                    log.info(f"[{server.hostname}]\tputting {tar} to {to_path}")
+                    await asyncio.to_thread(server.connection.put, tar, to_path)
+
+                    extract_cmd = f"tar -xf {quote(to_path)} --directory {quote(server.path)}"
+                    log.info(f"[{server.hostname}]\tRunning {extract_cmd}")
+                    await self.run(server, extract_cmd)
+
+                    await self.run(server, f"rm -f {quote(to_path)}")
+                except Exception as e:
+                    log.warn(f"[{server.hostname}] Failed to setup server: {e}")
+
+            await asyncio.gather(
+                *[send_archive(server, archive_name) for server in self.config.servers]
+            )
+
+    async def run_all(self, cmd, timeout = None) -> list[tuple[Server, str]]:
         result = await asyncio.gather(
-            *[asyncio.to_thread(runner, server) for server in self.config.servers]
+            *[asyncio.to_thread(runner, server, cmd, timeout) for server in self.config.servers]
         )
         return [(server, response) for (server, response) in result if response != None]
 
-    async def run(self, server, cmd):
-        def runner(server) -> tuple[Server, str | None]:
-            try:
-                result = server.connection.run(cmd, hide=True)
-                return (server, result.stdout.strip())
-            except Exception as e:
-                log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
-                return (server, None)
+    async def run(self, server, cmd, timeout = None) -> str | None:
+        _, result = await asyncio.to_thread(runner, server, cmd, timeout)
+        return result
 
-        return await asyncio.to_thread(runner, server)
-
-    async def current_compose_projects(self):
-        await self.run_all("docker compose ls --format json")
+    #async def current_compose_projects(self):
+    #    await self.run_all("docker compose ls --format json")
 
     async def get_available_server(self) -> Server | None:
         loads = await self.run_all("cat /proc/loadavg | awk '{ print $1}'")
@@ -82,14 +80,3 @@ class Executor:
 
     async def current_challenges(self):
         pass
-
-    async def start_challenge(self, user_id, challenge_name):
-        # TODO: check if the challenge already exists / is being started to prevent it from starting several times
-        pass
-
-    async def stop_challenge(self, user_id, challenge_name):
-        pass
-
-    async def challenge_status(self, user_id, challenge_name):
-        pass
-

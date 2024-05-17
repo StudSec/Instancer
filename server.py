@@ -48,6 +48,3 @@ def parse_servers(hosts):
 
         servers.append(Server(hostname, host['ip'], port, user, path))
     return servers
-
-# docker-compose -p [team name] up -d powerpc
-# docker-compose -p [team name] port powerpc 5000
