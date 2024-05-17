@@ -6,3 +6,5 @@ services:
       - ./challenges/Challenges/:/challenges
       - ./keys/:/app/keys
       - ./config.toml:/app/config.toml
+    ports:
+      - 8000:8000
