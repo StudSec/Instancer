@@ -9,23 +9,6 @@ from server import Server
 
 log = getLogger(__name__)
 
-def setup_env(server, tar):
-    try:
-        server.connection.run(f"rm -rf {quote(server.path)}")
-        server.connection.run(f"mkdir -p {quote(server.path)}")
-
-        to_path = join(server.path, basename(tar))
-        log.info(f"[{server.hostname}]\tputting {tar} to {to_path}")
-        server.connection.put(tar, to_path)
-
-        extract_cmd = f"tar -xf {quote(to_path)} --directory {quote(server.path)}"
-        log.info(f"[{server.hostname}]\tRunning {extract_cmd}")
-        server.connection.run(extract_cmd)
-
-        server.connection.run(f"rm -f {quote(to_path)}")
-    except Exception as e:
-        log.warn(f"[{server.hostname}] Failed to setup server: {e}")
-
 def runner(server, cmd, timeout = None) -> tuple[Server, str | None]:
     try:
         log.info(f"[{server.hostname}]\tRunning command '{cmd}'")
@@ -39,19 +22,39 @@ class Executor:
     def __init__(self, config: Config):
         self.config = config
 
-    def create_enviroment(self):
+    async def create_enviroment(self):
         # List all the files that have to be uploaded
         base_dir = dirname(self.config.compose_path)
 
         with NamedTemporaryFile(delete_on_close=False) as f:
             log.info(f"Making archive of {base_dir}")
-            archive_name = make_archive(
+            archive_name = await asyncio.to_thread(make_archive,
                 f.name,
                 "tar",
                 base_dir)
 
             log.info(f"Sending archive to {len(self.config.servers)} servers")
-            self.config.pool.starmap(setup_env, [(server, archive_name) for server in self.config.servers])
+
+            async def send_archive(server, tar):
+                try:
+                    await self.run(server, f"rm -rf {quote(server.path)}")
+                    await self.run(server, f"mkdir -p {quote(server.path)}")
+
+                    to_path = join(server.path, basename(tar))
+                    log.info(f"[{server.hostname}]\tputting {tar} to {to_path}")
+                    await asyncio.to_thread(server.connection.put, tar, to_path)
+
+                    extract_cmd = f"tar -xf {quote(to_path)} --directory {quote(server.path)}"
+                    log.info(f"[{server.hostname}]\tRunning {extract_cmd}")
+                    await self.run(server, extract_cmd)
+
+                    await self.run(server, f"rm -f {quote(to_path)}")
+                except Exception as e:
+                    log.warn(f"[{server.hostname}] Failed to setup server: {e}")
+
+            await asyncio.gather(
+                *[send_archive(server, archive_name) for server in self.config.servers]
+            )
 
     async def run_all(self, cmd, timeout = None) -> list[tuple[Server, str]]:
         result = await asyncio.gather(
