@@ -1,5 +1,5 @@
 import asyncio
-from config import Config
+from webapp.config import Config
 from shlex import quote
 from os.path import join, dirname, basename
 from logging import getLogger

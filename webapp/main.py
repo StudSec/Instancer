@@ -1,9 +1,9 @@
 import asyncio
-from config import Config
-from executor import Executor
+from webapp.config import Config
+from webapp.executor import Executor
 from hypercorn.config import Config as HypercornConfig
 from hypercorn.asyncio import serve
-from api import app
+from webapp.api import app
 import logging
 
 
@@ -25,7 +25,7 @@ async def server(config, executor):
     }
 
     hypercorn = HypercornConfig()
-    hypercorn.bind = [f"{config.api["ip"]}:{config.api["port"]}"]
+    hypercorn.bind = [f"{config.api['ip']}:{config.api['port']}"]
     await asyncio.gather(
         serve(app, hypercorn),
         update_challenges()
@@ -35,7 +35,7 @@ async def server(config, executor):
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    config = Config("config.toml")
+    config = Config("../config.toml")
 
     executor = Executor(config)
 
