@@ -8,7 +8,7 @@ app = FastAPI()
 
 background_tasks = set()
 
-ALPHANUM = "^[a-zA-Z0-9_]*$"
+ALPHANUM = "^[a-z0-9_]*$"
 
 def does_challenge_exist(app: FastAPI, service_name: str):
     challenges = app.extra["config"].challenges
