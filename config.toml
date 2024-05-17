@@ -6,7 +6,7 @@ port = 8000
 path = "database.sqlite3"
 
 [docker]
-compose_path = "../../CTF/VUCTF-2024-Challenges/docker-compose.yml"
+compose_path = "/challenges/docker-compose.yml"
 
 [ssh]
 keyfile = "keys/key"
