@@ -18,7 +18,7 @@ class ChallengeState:
         async with connect(self.db.file) as db:
             await db.execute("INSERT INTO challenges \
                 (name, user_id, state, reason) \
-                VALUES (?, ?, ?, ?)",
+                VALUES (?, ?, ?, ?) ON CONFLICT (name, user_id) DO NOTHING",
                 (self.challenge_name, self.user_id, "created", ""))
             await db.commit()
 
