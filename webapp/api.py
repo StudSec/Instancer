@@ -46,6 +46,8 @@ async def start_challenge(
             return {"starting"}
         else:
             return {"still working on it"}
+    except HTTPException as e:
+        return {e.detail}
     except Exception as e:
         log.warning(f"Error occured in start API: {e}")
         return {"something went wrong"}
