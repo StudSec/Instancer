@@ -1,12 +1,15 @@
 from typing import Annotated
 from asyncio import create_task
-from fastapi import FastAPI, HTTPException, status, Path
+from fastapi import FastAPI, HTTPException, status, Path, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from webapp.database import ChallengeState
 from logging import getLogger
 
 log = getLogger(__name__)
 
 app = FastAPI()
+
+security = HTTPBasic()
 
 background_tasks = set()
 
@@ -22,10 +25,25 @@ def does_challenge_exist(app: FastAPI, service_name: str):
         )
 
 
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+    username = app.extra["config"].api["username"]
+    password = app.extra["config"].api["password"]
+
+    if credentials.username != username or credentials.password != password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
 @app.get("/start/{user_id}/{service_name}")
 async def start_challenge(
         user_id: Annotated[str, Path(pattern=ALPHANUM)],
-        service_name: Annotated[str, Path(pattern=ALPHANUM)]):
+        service_name: Annotated[str, Path(pattern=ALPHANUM)],
+        username: str = Depends(authenticate),
+        ):
     try:
         does_challenge_exist(app, service_name)
 
@@ -56,7 +74,9 @@ async def start_challenge(
 @app.get("/stop/{user_id}/{service_name}")
 async def stop_challenge(
         user_id: Annotated[str, Path(pattern=ALPHANUM)],
-        service_name: Annotated[str, Path(pattern=ALPHANUM)]):
+        service_name: Annotated[str, Path(pattern=ALPHANUM)],
+        username: str = Depends(authenticate),
+        ):
     try:
         does_challenge_exist(app, service_name)
         executor = app.extra["executor"]
@@ -75,6 +95,8 @@ async def stop_challenge(
             return {"stopping"}
         else:
             return {"still working on it"}
+    except HTTPException as e:
+        return {e.detail}
     except Exception as e:
         log.warning(f"Error occured in stop API: {e}")
         return {"something went wrong"}
@@ -83,7 +105,9 @@ async def stop_challenge(
 @app.get("/status/{user_id}/{service_name}")
 async def challenge_status(
         user_id: Annotated[str, Path(pattern=ALPHANUM)],
-        service_name: Annotated[str, Path(pattern=ALPHANUM)]):
+        service_name: Annotated[str, Path(pattern=ALPHANUM)],
+        username: str = Depends(authenticate),
+        ):
     try:
         does_challenge_exist(app, service_name)
 
@@ -103,6 +127,8 @@ async def challenge_status(
             if state == "failed":
                 r['reason'] = reason
         return r
+    except HTTPException as e:
+        return {e.detail}
     except Exception as e:
         log.warning(f"Error occured in status API: {e}")
         return {"state": "failed", "reason": "something went wrong"}
