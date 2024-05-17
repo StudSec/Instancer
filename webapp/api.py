@@ -47,7 +47,7 @@ async def start_challenge(
         else:
             return {"still working on it"}
     except Exception as e:
-        log.warn(f"Error occured in start API: {e}")
+        log.warning(f"Error occured in start API: {e}")
         return {"something went wrong"}
 
 
@@ -74,7 +74,7 @@ async def stop_challenge(
         else:
             return {"still working on it"}
     except Exception as e:
-        log.warn(f"Error occured in stop API: {e}")
+        log.warning(f"Error occured in stop API: {e}")
         return {"something went wrong"}
 
 
@@ -102,5 +102,5 @@ async def challenge_status(
                 r['reason'] = reason
         return r
     except Exception as e:
-        log.warn(f"Error occured in status API: {e}")
+        log.warning(f"Error occured in status API: {e}")
         return {"state": "failed", "reason": "something went wrong"}

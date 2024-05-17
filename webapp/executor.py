@@ -52,7 +52,7 @@ class Executor:
 
                     await self.run(server, f"rm -f {quote(to_path)}")
                 except Exception as e:
-                    log.warn(f"[{server.hostname}] Failed to setup server: {e}")
+                    log.warning(f"[{server.hostname}] Failed to setup server: {e}")
 
             await asyncio.gather(
                 *[send_archive(server, archive_name) for server in self.config.servers]

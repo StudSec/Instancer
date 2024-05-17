@@ -17,7 +17,7 @@ async def server(config, executor):
                 await executor.create_enviroment()
             except Exception as e:
                 log = logging.getLogger(__name__)
-                log.warn(f"Something went wrong while creating environment: {e}")
+                log.warning(f"Something went wrong while creating environment: {e}")
 
     app.extra = {
         "config": config,
