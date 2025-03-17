@@ -1,7 +1,21 @@
 # Instancer
 "Kinda like a poor man's instancer" - Delta 
 
-A minimalistic(ish) challenge instancer built on top of FastAPI, Docker and SSH. 
+A minimalistic(ish) challenge instancer built on top of FastAPI, Docker and SSH.
+
+## Design
+Please remember that the studsec techstack for challenges looks something like this:
+![https://drive.google.com/file/d/1aIMa45RakoXDrnkUhMR_4wLCwVuKCNP1/view?usp=drive_link](./docs/design.png)
+
+The instancer is responsible for starting and stopping challenge containers found in a
+challenge repo on some (ssh-connected) servers. The instancer acts very much like
+a control plane, starting and stopping VMs and setting up their ports. 
+
+The Instancer interacts with [**pwncrates**](https://github.com/StudSec/pwncrates)
+through a webAPI defined in ./webapp/api.py. Additionally, this repo interacts with
+a **challenge repo** in the form of: 
+[**Challenges**](https://github.com/StudSec/Challenge-examples) using an API to be
+properly defined.
 
 ## Installation
 Firstly build the Docker container, this will only need to be done once.
