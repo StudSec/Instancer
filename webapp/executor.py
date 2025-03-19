@@ -26,7 +26,7 @@ class Executor:
 
     async def create_enviroment(self):
         # List all the files that have to be uploaded
-        base_dir = dirname(self.config.compose_path)
+        base_dir = self.config.challenge_path
 
         with NamedTemporaryFile(delete_on_close=False) as f:
             log.info(f"Making archive of {base_dir}")

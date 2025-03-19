@@ -1,5 +1,8 @@
 import asyncio
 import json
+import os
+import sys
+
 from shlex import quote
 from yaml import safe_load
 from logging import getLogger
@@ -11,23 +14,8 @@ log = getLogger(__name__)
 
 
 class Challenge:
-    def __init__(self, name: str, config: dict) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self._config = config
-
-        self.ports = list()
-        for port in config["ports"]:
-            self.ports.append(Port(name, port))
-
-        r = "Make sure you use resource limits on each service to prevent resource exhaustion!"
-        if "deploy" not in config:
-            log.warning(f"No deploy label for {name}. {r}")
-        else:
-            if "resources" not in config["deploy"]:
-                log.warning(f"No resource label in deploy section of {name}. {r}")
-            else:
-                if "limits" not in config["deploy"]["resources"]:
-                    log.warning(f"No limits label in resources of {name}. {r}")
 
         class WorkingSet:
             def __init__(self) -> None:
@@ -168,18 +156,30 @@ class Challenge:
         await self.working_set.remove(user_id)
 
 
-def parse_compose(path: str) -> dict[str, Challenge]:
-    with open(path) as f:
-        data = safe_load(f)
-        services = data["services"]
+def parse_challenges(path: str) -> dict[str, Challenge]:
+    
+    sys.path.append(path)
+    print(f"items in the path include: {os.listdir(path)}")
+    import checker
 
-        challenges = dict()
-        for name in services:
-            config = services[name]
+    set = checker.ChallengeSet(path)
 
-            # Only challenges with exposed ports are treated as challenges
-            if "ports" in config:
-                challenge = Challenge(name, services[name])
-                challenges[name] = challenge
+    parsed_challenges = {}
+    for challenge_id, challenge in set.challenges.items():
+        parsed_challenges[challenge.name] = Challenge(challenge.name)
 
-        return challenges
+    return parsed_challenges
+    # with open(path) as f:
+    #     data = safe_load(f)
+    #     services = data["services"]
+
+    #     challenges = dict()
+    #     for name in services:
+    #         config = services[name]
+
+    #         # Only challenges with exposed ports are treated as challenges
+    #         if "ports" in config:
+    #             challenge = Challenge(name, services[name])
+    #             challenges[name] = challenge
+
+    #     return challenges

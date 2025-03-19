@@ -1,6 +1,6 @@
 import tomllib
 
-from webapp.challenge import parse_compose
+from webapp.challenge import parse_challenges
 from webapp.server import parse_servers
 from webapp.database import Database
 
@@ -20,8 +20,8 @@ class Config:
 
             self.api = data["api"]
 
-            self.compose_path = data["docker"]["compose_path"]
-            self.challenges = parse_compose(self.compose_path)
+            self.challenge_path = data["docker"]["challenge_path"]
+            self.challenges = parse_challenges(self.challenge_path)
 
             self.keyfile = data["ssh"]["keyfile"]
 
