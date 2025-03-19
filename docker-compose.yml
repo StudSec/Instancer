@@ -1,5 +1,6 @@
 services:
   instancer:
+    container_name: instancer
     build:
       context: .
     volumes:
