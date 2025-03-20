@@ -43,6 +43,15 @@ Here the `ip` value is mandatory, other fields can be specified on a per-server 
 
 Upon startup, the `path` directory will be cleared and populated with the challenge data.
 
+## Tests
+a simple test has been added in ./test/test.py. In here every function prefixed
+with test will be treated as such. The tests can be executed with the following
+command when the container is running:
+
+```bash
+docker exec -it instancer  /usr/local/bin/pytest ./test.py
+```
+
 ## API
 From your challenge provider you'll want to interface with the instancer. For this the following API is provided:
 #### Start
