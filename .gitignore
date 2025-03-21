@@ -2,6 +2,7 @@
 challenges/Challenges
 keys/
 *.sqlite3
+docker-compose.override.yaml
 
 
 # Byte-compiled / optimized / DLL files

@@ -1,0 +1,22 @@
+services:
+  instancer:
+    networks:
+      - app-network
+    depends_on:
+      - node1
+
+  node1:
+    container_name: node1
+    build:
+      context: .
+      dockerfile: ./test-server/node1Dockerfile
+    ports:
+      - 2222:22
+    networks:
+      - app-network
+    volumes:
+      - ./keys/:/app/keys
+
+networks:
+  app-network:
+    driver: bridge

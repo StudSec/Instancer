@@ -1,0 +1,26 @@
+FROM ubuntu:24.04                                                              
+
+RUN apt-get update && apt-get install -y openssh-server
+
+RUN mkdir /var/run/sshd
+
+RUN echo "root:password" | chpasswd
+
+RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+
+ARG USER joachim
+
+# Authorize SSH Host
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh
+# See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+COPY ./keys/known_hosts /root/.ssh/known_hosts
+COPY ./keys/id_rsa.pub /root/.ssh/authorized_keys
+
+# Add the keys and set permissions
+RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
+    echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa.pub && \
+    chmod 600 /root/.ssh/id_rsa && \
+    chmod 600 /root/.ssh/id_rsa.pub
+
+CMD ["/usr/sbin/sshd", "-D"]
