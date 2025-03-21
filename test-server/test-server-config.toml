@@ -3,4 +3,3 @@ ip = "node1"
 port = "22"
 user = "root"
 path = "/srv"
-
