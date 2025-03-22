@@ -6,4 +6,5 @@ aiosqlite==0.20.0
 termcolor
 requests
 pytest
+pytest-asyncio
 toml
