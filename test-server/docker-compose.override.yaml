@@ -16,6 +16,7 @@ services:
       - app-network
     volumes:
       - ./keys/:/app/keys
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   app-network:
