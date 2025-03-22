@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import sys
+import pathlib
 
 from shlex import quote
 from yaml import safe_load
@@ -14,8 +15,9 @@ log = getLogger(__name__)
 
 
 class Challenge:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, path) -> None:
         self.name = name
+        self.path = path
 
         class WorkingSet:
             def __init__(self) -> None:
@@ -101,45 +103,25 @@ class Challenge:
         await state.set("starting")
         target_server = await executor.get_available_server()
         if target_server is None:
+            # this is never reached on fail, Why?
             await state.set("failed", "no server available")
             await self.working_set.remove(user_id)
             return
 
-        base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
-        cmd = f"{base_cmd} build --with-dependencies {self.name}"
+        # I love pathlib
+        run_script_path = pathlib.Path(target_server.path) / self.path / "Source/run.sh"
+        
+        # TODO
+        flag = "HI"
+        port = "1337"
+        hostname = "127.0.0.1"
+
+        cmd = f"{run_script_path} --flag {flag} --hostname {hostname} --port {port}"
         result = await executor.run(target_server, cmd)
         if result is None:
-            await state.set("failed", "building images failed")
+            await state.set("failed", "starting run.sh failed")
             await self.working_set.remove(user_id)
             return
-
-        cmd = f"{base_cmd} down {self.name}"
-        result = await executor.run(target_server, cmd)
-        if result is None:
-            await state.set("failed", "failed shutting down service")
-            await self.working_set.remove(user_id)
-            return
-
-        cmd = f"{base_cmd} up -d {self.name}"
-        result = await executor.run(target_server, cmd)
-        if result is None:
-            await state.set("failed", "failed starting service")
-            await self.working_set.remove(user_id)
-            return
-
-        ports = []
-        for port in self.ports:
-            cmd = f"{base_cmd} port {self.name} {port.port}"
-            result = await executor.run(target_server, cmd)
-            if result is None:
-                await state.set("failed", "failed to get ports")
-                await self.working_set.remove(user_id)
-                return
-            ports.append(result.split(":")[-1])
-
-        ports = [f"{target_server.ip}:{port}" for port in ports]
-        await state.set("running", str(ports))
-        await self.working_set.remove(user_id)
 
     async def stop(self, executor, user_id: str):
         db = ChallengeState(executor.config.database, self.name, user_id)
@@ -159,27 +141,14 @@ class Challenge:
 def parse_challenges(path: str) -> dict[str, Challenge]:
     
     sys.path.append(path)
-    print(f"items in the path include: {os.listdir(path)}")
     import checker
 
     set = checker.ChallengeSet(path)
 
     parsed_challenges = {}
+
     for challenge_id, challenge in set.challenges.items():
-        parsed_challenges[challenge.name] = Challenge(challenge.name)
+        path = challenge.path.removeprefix("/challenges/") # here is tight coupling :(    
+        parsed_challenges[challenge.name] = Challenge(challenge.name, path)
 
     return parsed_challenges
-    # with open(path) as f:
-    #     data = safe_load(f)
-    #     services = data["services"]
-
-    #     challenges = dict()
-    #     for name in services:
-    #         config = services[name]
-
-    #         # Only challenges with exposed ports are treated as challenges
-    #         if "ports" in config:
-    #             challenge = Challenge(name, services[name])
-    #             challenges[name] = challenge
-
-    #     return challenges
