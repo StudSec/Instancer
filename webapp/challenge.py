@@ -48,36 +48,35 @@ class Challenge:
             await db_entry.create_challenge()
 
         async def retrieve(server):
-            cmd = f"docker compose -p {quote(user_id)} --project-directory {server.path} ps --format json"
-            result = await executor.run(server, cmd, timeout=1)
-            if result is None:
-                return []
-            services = [json.loads(service) for service in result.splitlines()]
-            return [service for service in services if service["Service"] == self.name]
 
-        result = await asyncio.gather(
+            # TODO
+            port = "1337"
+            hostname = "127.0.0.1"
+
+            probe_script_path = pathlib.Path(server.path) / self.path / "Source/probe-status.sh"
+            cmd = f"{probe_script_path} --hostname {hostname} --port {port}"
+            result = await executor.run(server, cmd, timeout=1)
+            
+            # perhaps a better way to do this than checking the string?
+            return result
+           
+        results = await asyncio.gather(
             *[retrieve(server) for server in executor.config.servers]
         )
 
-        idx = None;
+        idx = None
         for i in range(len(executor.config.servers)):
-            if len(result[i]) > 0:
+            if len(results[i]) > 0:
                 idx = i
                 break
 
         if idx is None:
             await db_entry.set("stopped", "challenge not found on a server")
             return
-
-        await db_entry.set_server(idx)
-        entry = result[idx][0]
-        server = executor.config.servers[idx]
-
-        ports = entry["Publishers"]
-        ports = [f"{server.ip}:{port["PublishedPort"]}" for port in ports]
-        if len(ports) > 0:
-            ports = ports[0]
-        await db_entry.set(entry["State"], str(ports))
+        elif (results[idx].startswith("[OK]")):
+            await db_entry.set("started")
+        else:
+            await db_entry.set("failed", results[idx])
 
     async def start(self, executor, user_id: str):
         db = executor.config.database
@@ -109,19 +108,21 @@ class Challenge:
             return
 
         # I love pathlib
-        run_script_path = pathlib.Path(target_server.path) / self.path / "Source/run.sh"
+        run_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/run.sh"
+        execution_path = run_script_path.parent
         
         # TODO
         flag = "HI"
         port = "1337"
         hostname = "127.0.0.1"
 
-        cmd = f"{run_script_path} --flag {flag} --hostname {hostname} --port {port}"
+        cmd = f"cd {execution_path} && bash {run_script_path} --flag {flag} --hostname {hostname} --port {port}"
         result = await executor.run(target_server, cmd)
         if result is None:
-            await state.set("failed", "starting run.sh failed")
+            await state.set("failed", "starting run.sh failedg")
             await self.working_set.remove(user_id)
             return
+        
 
     async def stop(self, executor, user_id: str):
         db = ChallengeState(executor.config.database, self.name, user_id)
@@ -129,12 +130,15 @@ class Challenge:
         if server is None:
             await self.working_set.remove(user_id)
             return
+        
+        target_server = 0
 
-        target_server = executor.config.servers[server]
-        base_cmd = f"docker compose -p {quote(user_id)} --project-directory {target_server.path}"
-        cmd = f"{base_cmd} down {self.name}"
+        destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/destroy.sh"
+        execution_path = destroy_script_path.parent
+        cmd = f"cd {execution_path} && bash {destroy_script_path}"
+
         await executor.run(target_server, cmd)
-        await db.delete();
+        await db.delete()
         await self.working_set.remove(user_id)
 
 

@@ -14,9 +14,9 @@ def runner(server, cmd, timeout=None) -> tuple[Server, str | None]:
     try:
         log.info(f"[{server.hostname}]\tRunning command '{cmd}'")
         result = server.connection.run(cmd, hide=True, timeout=timeout)
+
         return (server, result.stdout.strip())
     except Exception as e:
-        print(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
         log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
         
         return (server, None)
