@@ -81,3 +81,18 @@ async def test_start_instance():
     
     await stop_challenge(user_id, challenge_name, app)
     assert_status(user_id, challenge_name, b'{"state":"stopped"}')
+
+@pytest.mark.asyncio
+async def test_start_two_challs():
+    user_ids = ["1000", "2000"]
+    challenge_name = "buffer_overflow"
+
+    for user_id in user_ids:
+        await start_challenge(user_id, challenge_name, app)
+        assert_status(user_id, challenge_name,  b'{"state":"started"}')
+    
+    for user_id in user_ids:
+        await stop_challenge(user_id, challenge_name, app)
+        assert_status(user_id, challenge_name, b'{"state":"stopped"}')
+
+
