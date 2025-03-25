@@ -19,9 +19,7 @@ def get_config():
 
 def get_authentication():
     config = get_config()
-    print(f"username = {config["api"]["username"]} & password = {config["api"]["password"]}")
     return httpx.BasicAuth(config["api"]["username"], config["api"]["password"])
-
 
 client = TestClient(app)
 config = Config(CONFIG_PATH)
@@ -53,19 +51,33 @@ def test_start_stop_status_endpoints():
     print(f"Instancer responded to stop with {response.content}")
     assert response.status_code == 200
 
+async def start_challenge(uuid, name, app):
+    executor = app.extra["executor"]
+    challenge = app.extra["config"].challenges[name]
+    
+    if await challenge.working_set.contains_or_insert(uuid):
+        await challenge.start(executor, uuid)
+
+async def stop_challenge(uuid, name, app):
+    executor = app.extra["executor"]
+    challenge = app.extra["config"].challenges[name]
+    
+    await challenge.stop(executor, uuid)
+
+def assert_status(uuid, name, expected_result):
+    auth = get_authentication()
+    response = client.get(f"/status/{uuid}/{name}", auth=auth)
+    print(f"Instancer responded to status with {response.content}")
+    assert response.status_code == 200
+    assert response.content == expected_result
+
 @pytest.mark.asyncio
 async def test_start_instance():
     user_id = "1234"
     challenge_name = "buffer_overflow"
-    auth = get_authentication()
 
-    executor = app.extra["executor"]
-    challenge = app.extra["config"].challenges[challenge_name]
+    await start_challenge(user_id, challenge_name, app)
+    assert_status(user_id, challenge_name,  b'{"state":"started"}')
     
-    if await challenge.working_set.contains_or_insert(user_id):
-        await challenge.start(executor, user_id)
-    
-    response = client.get(f"/status/{user_id}/{challenge_name}", auth=auth)
-    print(f"Instancer responded to status with {response.content}")
-    assert response.status_code == 200
-    assert response.content == b'{"state":"started"}'
+    await stop_challenge(user_id, challenge_name, app)
+    assert_status(user_id, challenge_name, b'{"state":"stopped"}')
