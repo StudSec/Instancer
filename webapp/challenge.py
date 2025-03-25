@@ -65,8 +65,9 @@ class Challenge:
         )
 
         idx = None
+        
         for i in range(len(executor.config.servers)):
-            if len(results[i]) > 0:
+            if (results[i] is not None and len(results[i]) > 0):
                 idx = i
                 break
 
@@ -106,6 +107,8 @@ class Challenge:
             await state.set("failed", "no server available")
             await self.working_set.remove(user_id)
             return
+        
+        await state.set_server(executor.config.servers.index(target_server))
 
         # I love pathlib
         run_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/run.sh"
@@ -126,18 +129,19 @@ class Challenge:
 
     async def stop(self, executor, user_id: str):
         db = ChallengeState(executor.config.database, self.name, user_id)
-        server = await db.get_server()
-        if server is None:
-            await self.working_set.remove(user_id)
-            return
         
-        target_server = 0
+        target_server = executor.config.servers[ await db.get_server() ]
+        if target_server is None:
+            await self.working_set.remove(user_id)
+            print("server not found")
+            log.info("server not found, cannot stop")
+            return
 
         destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/destroy.sh"
         execution_path = destroy_script_path.parent
         cmd = f"cd {execution_path} && bash {destroy_script_path}"
 
-        await executor.run(target_server, cmd)
+        res = await executor.run(target_server, cmd)
         await db.delete()
         await self.working_set.remove(user_id)
 
