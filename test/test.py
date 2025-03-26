@@ -6,6 +6,7 @@ import httpx
 import tomllib
 import asyncio
 import pytest
+import logging
 from webapp.executor import Executor
 from webapp.config import Config
 from webapp.challenge import Challenge
@@ -64,7 +65,7 @@ async def stop_challenge(uuid, name, app):
     
     await challenge.stop(executor, uuid)
 
-def assert_status(uuid, name, expected_result):
+def assert_challenge_status(uuid, name, expected_result):
     auth = get_authentication()
     response = client.get(f"/status/{uuid}/{name}", auth=auth)
     print(f"Instancer responded to status with {response.content}")
@@ -72,27 +73,36 @@ def assert_status(uuid, name, expected_result):
     assert response.content == expected_result
 
 @pytest.mark.asyncio
-async def test_start_instance():
+async def test_start_instance(caplog):
     user_id = "1234"
     challenge_name = "buffer_overflow"
 
+    caplog.set_level(logging.INFO)
+
+    assert_challenge_status(user_id, challenge_name, b'{"state":"stopped"}')
+
     await start_challenge(user_id, challenge_name, app)
-    assert_status(user_id, challenge_name,  b'{"state":"started"}')
+    assert_challenge_status(user_id, challenge_name,  b'{"state":"started"}')
     
     await stop_challenge(user_id, challenge_name, app)
-    assert_status(user_id, challenge_name, b'{"state":"stopped"}')
+    assert_challenge_status(user_id, challenge_name, b'{"state":"stopped"}')
 
 @pytest.mark.asyncio
-async def test_start_two_challs():
+async def test_start_two_challs(caplog):
+    caplog.set_level(logging.INFO)
+    
     user_ids = ["1000", "2000"]
     challenge_name = "buffer_overflow"
 
     for user_id in user_ids:
+        assert_challenge_status(user_id, challenge_name, b'{"state":"stopped"}')
         await start_challenge(user_id, challenge_name, app)
-        assert_status(user_id, challenge_name,  b'{"state":"started"}')
+        assert_challenge_status(user_id, challenge_name,  b'{"state":"started"}')
     
     for user_id in user_ids:
+        
+        assert_challenge_status(user_id, challenge_name, b'{"state":"started"}')
         await stop_challenge(user_id, challenge_name, app)
-        assert_status(user_id, challenge_name, b'{"state":"stopped"}')
+        assert_challenge_status(user_id, challenge_name, b'{"state":"stopped"}')
 
 
