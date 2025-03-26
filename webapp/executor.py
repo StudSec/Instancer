@@ -67,7 +67,6 @@ class Executor:
         return [(server, response) for (server, response) in result if response != None]
 
     async def run(self, server, cmd, timeout=None) -> str | None:
-        print(f"  + running command: {cmd}")
         _, result = await asyncio.to_thread(runner, server, cmd, timeout)
         return result
 

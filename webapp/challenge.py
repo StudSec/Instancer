@@ -43,6 +43,8 @@ class Challenge:
         self.working_set = WorkingSet()
 
     async def retrieve_state(self, executor, user_id: str):
+
+        log.info("checking state of challenge!")
         db_entry = ChallengeState(executor.config.database, self.name, user_id)
         if await db_entry.get() is None:
             await db_entry.create_challenge()
@@ -50,11 +52,12 @@ class Challenge:
         async def retrieve(server):
 
             # TODO
-            port = "1337"
+            port = "6546"
             hostname = "127.0.0.1"
 
             probe_script_path = pathlib.Path(server.path) / self.path / "Source/probe-status.sh"
             cmd = f"{probe_script_path} --hostname {hostname} --port {port}"
+            log.info(f"  + running command: {cmd}")
             result = await executor.run(server, cmd, timeout=1)
             
             # perhaps a better way to do this than checking the string?
@@ -64,6 +67,8 @@ class Challenge:
             *[retrieve(server) for server in executor.config.servers]
         )
 
+        log.info(f"  + results are {results}")
+
         idx = None
         
         for i in range(len(executor.config.servers)):
@@ -72,14 +77,21 @@ class Challenge:
                 break
 
         if idx is None:
+            log.info(f"  + results are bogus! challenge not found!")
             await db_entry.set("stopped", "challenge not found on a server")
             return
-        elif (results[idx].startswith("[OK]")):
+        elif (results[idx].startswith("[UP]")):
+            log.info(f"  + challenge OK")
             await db_entry.set("started")
+        elif (results[idx].startswith("[DOWN]")):
+            log.info(f"  + challenge is down!")
+            await db_entry.set("stopped")
         else:
+            log.warning(f"  + probe results parsing went wrong! results: {results}")
             await db_entry.set("failed", results[idx])
 
     async def start(self, executor, user_id: str):
+        log.info("starting challenge!")
         db = executor.config.database
         state = ChallengeState(db, self.name, user_id)
 
@@ -100,8 +112,11 @@ class Challenge:
         else:
             await state.create_challenge()
 
+        log.info("  + setting state")
         await state.set("starting")
         target_server = await executor.get_available_server()
+
+        log.info(f"  + chose server: {target_server}")
         if target_server is None:
             # this is never reached on fail, Why?
             await state.set("failed", "no server available")
@@ -116,34 +131,47 @@ class Challenge:
         
         # TODO
         flag = "HI"
-        port = "1337"
+        port = "6546"
         hostname = "127.0.0.1"
 
         cmd = f"cd {execution_path} && bash {run_script_path} --flag {flag} --hostname {hostname} --port {port}"
+        log.info(f"  + executing command {cmd}")
         result = await executor.run(target_server, cmd)
+        log.info(f"  + command resulted: {result}")
+
         if result is None:
             await state.set("failed", "starting run.sh failedg")
             await self.working_set.remove(user_id)
-            return
         
 
     async def stop(self, executor, user_id: str):
+
+        log.info("Stopping challenge!")
         db = ChallengeState(executor.config.database, self.name, user_id)
         
         target_server = executor.config.servers[ await db.get_server() ]
+        
         if target_server is None:
             await self.working_set.remove(user_id)
-            print("server not found")
-            log.info("server not found, cannot stop")
+            log.warning("server not found, cannot stop")
             return
 
-        destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/destroy.sh"
+        port = "6546"
+
+        destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / f"Source/destroy.sh --port {port}"
+        log.info(f"  + destroy script: {destroy_script_path}")
+        log.info(f"  + execution location: {execution_path}")
+
         execution_path = destroy_script_path.parent
         cmd = f"cd {execution_path} && bash {destroy_script_path}"
 
+        log.info(f"  + running command: {cmd}")
         res = await executor.run(target_server, cmd)
+        log.info(f"  + result: {res}")
+        
         await db.delete()
         await self.working_set.remove(user_id)
+        log.info(f"  + updated local state")
 
 
 def parse_challenges(path: str) -> dict[str, Challenge]:
