@@ -41,6 +41,24 @@ class Challenge:
                     self.challenges.remove(user_id)
 
         self.working_set = WorkingSet()
+    
+    async def parse_test_output(self, result, db_entry):
+        try:
+            data = json.loads(result)
+        except ValueError as e:
+            log.warning(f"  + pre-execution test yielded invalid JSON! results: {result}")
+            await db_entry.set("failed", f"pre-flight test failed to run!")
+
+        log.info(f"  + results: {data}")
+        
+        if(len(list(filter(lambda x: x != "", data.values()))) > 0):
+            log.warning(f"  + challenge down! results: {result}")
+            await db_entry.set("stopped")
+
+        else:
+            log.info("  + check OK! challenge up!")
+            await db_entry.set("started")
+
 
     async def retrieve_state(self, executor, user_id: str):
 
@@ -53,10 +71,20 @@ class Challenge:
 
             # TODO
             port = "6546"
-            hostname = "127.0.0.1"
+            hostname = "0.0.0.0"
 
-            probe_script_path = pathlib.Path(server.path) / self.path / "Source/probe-status.sh"
-            cmd = f"{probe_script_path} --hostname {hostname} --port {port}"
+            log.info("looking for python")
+            python_path = await executor.run(server, "which python3", timeout=1)
+            if(len(python_path) <= 0):
+                log.critical(f"python3 is not available on {server}!")
+
+            challenge_path = pathlib.Path(server.path) / self.path
+            probe_script_path = challenge_path / "Tests/main.py"
+            cmd = f"{python_path} {probe_script_path} "
+            cmd += f"--connection-string \"172.18.0.1 {port}\" --flag=HI "
+            cmd += f"--handout-path {challenge_path / "Handout"} "
+            cmd += f"--deployment-path {challenge_path / "Source"} "
+
             log.info(f"  + running command: {cmd}")
             result = await executor.run(server, cmd, timeout=1)
             
@@ -80,17 +108,11 @@ class Challenge:
             log.info(f"  + results are bogus! challenge not found!")
             await db_entry.set("stopped", "challenge not found on a server")
             return
-        elif (results[idx].startswith("[UP]")):
-            log.info(f"  + challenge OK")
-            await db_entry.set("started")
-        elif (results[idx].startswith("[DOWN]")):
-            log.info(f"  + challenge is down!")
-            await db_entry.set("stopped")
         else:
-            log.warning(f"  + probe results parsing went wrong! results: {results}")
-            await db_entry.set("failed", results[idx])
+            await self.parse_test_output(results[idx], db_entry)
 
     async def start(self, executor, user_id: str):
+        print("starting challenge!")
         log.info("starting challenge!")
         db = executor.config.database
         state = ChallengeState(db, self.name, user_id)
@@ -132,7 +154,7 @@ class Challenge:
         # TODO
         flag = "HI"
         port = "6546"
-        hostname = "127.0.0.1"
+        hostname = "0.0.0.0"
 
         cmd = f"cd {execution_path} && bash {run_script_path} --flag {flag} --hostname {hostname} --port {port}"
         log.info(f"  + executing command {cmd}")
@@ -145,7 +167,7 @@ class Challenge:
         
 
     async def stop(self, executor, user_id: str):
-
+        print("stopping challenge!")
         log.info("Stopping challenge!")
         db = ChallengeState(executor.config.database, self.name, user_id)
         
@@ -159,11 +181,10 @@ class Challenge:
         port = "6546"
 
         destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / f"Source/destroy.sh --port {port}"
-        log.info(f"  + destroy script: {destroy_script_path}")
-        log.info(f"  + execution location: {execution_path}")
-
         execution_path = destroy_script_path.parent
         cmd = f"cd {execution_path} && bash {destroy_script_path}"
+        log.info(f"  + destroy script: {destroy_script_path}")
+        log.info(f"  + execution location: {execution_path}")
 
         log.info(f"  + running command: {cmd}")
         res = await executor.run(target_server, cmd)
