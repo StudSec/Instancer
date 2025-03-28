@@ -15,9 +15,10 @@ log = getLogger(__name__)
 
 
 class Challenge:
-    def __init__(self, name: str, path) -> None:
+    def __init__(self, name: str, path, flag) -> None:
         self.name = name
         self.path = path
+        self.flag = flag
 
         class WorkingSet:
             def __init__(self) -> None:
@@ -49,12 +50,10 @@ class Challenge:
             log.warning(f"  + pre-execution test yielded invalid JSON! results: {result}")
             await db_entry.set("failed", f"pre-flight test failed to run!")
 
-        log.info(f"  + results: {data}")
         
         if(len(list(filter(lambda x: x != "", data.values()))) > 0):
-            log.warning(f"  + challenge down! results: {result}")
+            log.info(f"  + challenge down!")
             await db_entry.set("stopped")
-
         else:
             log.info("  + check OK! challenge up!")
             await db_entry.set("started")
@@ -62,15 +61,18 @@ class Challenge:
 
     async def retrieve_state(self, executor, user_id: str):
 
-        log.info("checking state of challenge!")
-        db_entry = ChallengeState(executor.config.database, self.name, user_id)
-        if await db_entry.get() is None:
-            await db_entry.create_challenge()
+        log.info(f"checking state of challenge! {self.name} {user_id}")
+        state = ChallengeState(executor.config.database, self.name, user_id)
+        if await state.get() is None:
+            await state.create_challenge()
 
         async def retrieve(server):
 
             # TODO
-            port = "6546"
+            port = await state.get_port()
+            if (port is None):
+                return None
+            
             hostname = "0.0.0.0"
 
             log.info("looking for python")
@@ -81,11 +83,10 @@ class Challenge:
             challenge_path = pathlib.Path(server.path) / self.path
             probe_script_path = challenge_path / "Tests/main.py"
             cmd = f"{python_path} {probe_script_path} "
-            cmd += f"--connection-string \"172.18.0.1 {port}\" --flag=HI "
+            cmd += f"--connection-string \"127.0.0.1 {port}\" --flag={self.flag} "
             cmd += f"--handout-path {challenge_path / "Handout"} "
             cmd += f"--deployment-path {challenge_path / "Source"} "
 
-            log.info(f"  + running command: {cmd}")
             result = await executor.run(server, cmd, timeout=1)
             
             # perhaps a better way to do this than checking the string?
@@ -106,14 +107,14 @@ class Challenge:
 
         if idx is None:
             log.info(f"  + results are bogus! challenge not found!")
-            await db_entry.set("stopped", "challenge not found on a server")
+            await state.set("stopped", "challenge not found on a server")
             return
         else:
-            await self.parse_test_output(results[idx], db_entry)
+            await self.parse_test_output(results[idx], state)
 
     async def start(self, executor, user_id: str):
-        print("starting challenge!")
-        log.info("starting challenge!")
+        log.info(f"starting challenge! {self.name} {user_id}")
+
         db = executor.config.database
         state = ChallengeState(db, self.name, user_id)
 
@@ -151,13 +152,13 @@ class Challenge:
         run_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / "Source/run.sh"
         execution_path = run_script_path.parent
         
-        # TODO
-        flag = "HI"
-        port = "6546"
+        log.info("  + allocating port")
+        port = target_server.alloc_port()
+        await state.set_port(port)
+
         hostname = "0.0.0.0"
 
-        cmd = f"cd {execution_path} && bash {run_script_path} --flag {flag} --hostname {hostname} --port {port}"
-        log.info(f"  + executing command {cmd}")
+        cmd = f"cd {execution_path} && bash {run_script_path} --flag {self.flag} --hostname {hostname} --port {port}"
         result = await executor.run(target_server, cmd)
         log.info(f"  + command resulted: {result}")
 
@@ -167,18 +168,17 @@ class Challenge:
         
 
     async def stop(self, executor, user_id: str):
-        print("stopping challenge!")
-        log.info("Stopping challenge!")
-        db = ChallengeState(executor.config.database, self.name, user_id)
+        log.info(f"Stopping challenge!  {self.name} {user_id}")
+        state = ChallengeState(executor.config.database, self.name, user_id)
         
-        target_server = executor.config.servers[ await db.get_server() ]
+        target_server = executor.config.servers[ await state.get_server() ]
         
         if target_server is None:
             await self.working_set.remove(user_id)
             log.warning("server not found, cannot stop")
             return
 
-        port = "6546"
+        port = await state.get_port()
 
         destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / f"Source/destroy.sh --port {port}"
         execution_path = destroy_script_path.parent
@@ -186,11 +186,10 @@ class Challenge:
         log.info(f"  + destroy script: {destroy_script_path}")
         log.info(f"  + execution location: {execution_path}")
 
-        log.info(f"  + running command: {cmd}")
         res = await executor.run(target_server, cmd)
         log.info(f"  + result: {res}")
         
-        await db.delete()
+        await state.delete()
         await self.working_set.remove(user_id)
         log.info(f"  + updated local state")
 
@@ -205,7 +204,8 @@ def parse_challenges(path: str) -> dict[str, Challenge]:
     parsed_challenges = {}
 
     for challenge_id, challenge in set.challenges.items():
-        path = challenge.path.removeprefix("/challenges/") # here is tight coupling :(    
-        parsed_challenges[challenge.name] = Challenge(challenge.name, path)
+        path = challenge.path.removeprefix("/challenges/") # here is tight coupling :(
+        flag = list(challenge.flag.keys())[0]
+        parsed_challenges[challenge.name] = Challenge(challenge.name, path, flag)
 
     return parsed_challenges
