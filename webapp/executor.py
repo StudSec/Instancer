@@ -14,9 +14,11 @@ def runner(server, cmd, timeout=None) -> tuple[Server, str | None]:
     try:
         log.info(f"[{server.hostname}]\tRunning command '{cmd}'")
         result = server.connection.run(cmd, hide=True, timeout=timeout)
+
         return (server, result.stdout.strip())
     except Exception as e:
         log.warning(f"[{server.hostname}]\tFailed to run '{cmd}': {e}")
+        
         return (server, None)
 
 
@@ -26,7 +28,7 @@ class Executor:
 
     async def create_enviroment(self):
         # List all the files that have to be uploaded
-        base_dir = dirname(self.config.compose_path)
+        base_dir = self.config.challenge_path
 
         with NamedTemporaryFile(delete_on_close=False) as f:
             log.info(f"Making archive of {base_dir}")
@@ -65,6 +67,7 @@ class Executor:
         return [(server, response) for (server, response) in result if response != None]
 
     async def run(self, server, cmd, timeout=None) -> str | None:
+        print(f"  + running command: {cmd}")
         _, result = await asyncio.to_thread(runner, server, cmd, timeout)
         return result
 

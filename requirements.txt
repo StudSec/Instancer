@@ -3,3 +3,8 @@ fabric==3.2.2
 fastapi==0.111.0
 Hypercorn==0.16.0
 aiosqlite==0.20.0
+termcolor
+requests
+pytest
+pytest-asyncio
+toml
