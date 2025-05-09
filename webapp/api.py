@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException, status, Path, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from webapp.database import ChallengeState
 from logging import getLogger
+import traceback as tb
 
 log = getLogger(__name__)
 
@@ -67,7 +68,7 @@ async def start_challenge(
     except HTTPException as e:
         return {e.detail}
     except Exception as e:
-        log.warning(f"Error occured in start API: {e}")
+        log.warning(f"Error occured in start API: {tb.format_exc()}")
         return {"something went wrong"}
 
 
@@ -98,7 +99,7 @@ async def stop_challenge(
     except HTTPException as e:
         return {e.detail}
     except Exception as e:
-        log.warning(f"Error occured in stop API: {e}")
+        log.warning(f"Error occured in stop API: {tb.format_exc()}")
         return {"something went wrong"}
 
 
@@ -130,5 +131,5 @@ async def challenge_status(
     except HTTPException as e:
         return {e.detail}
     except Exception as e:
-        log.warning(f"Error occured in status API: {e}")
+        log.warning(f"Error occured in status API: {tb.format_exc()}")
         return {"state": "failed", "reason": "something went wrong"}

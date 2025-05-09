@@ -1,0 +1,27 @@
+FROM docker:dind
+
+RUN apk add --update bash openssh-server openrc
+RUN apk add python3 py-pip py3-psutil
+
+RUN pip install --break-system-package pwntools
+
+RUN ssh-keygen -A
+
+RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
+
+ARG USER joachim
+
+# Authorize SSH Host
+RUN mkdir -p /root/.ssh && \
+    chmod 0700 /root/.ssh
+# See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+COPY ./keys/known_hosts /root/.ssh/known_hosts
+COPY ./keys/id_rsa.pub /root/.ssh/authorized_keys
+
+# Add the keys and set permissions
+RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
+    echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa.pub && \
+    chmod 600 /root/.ssh/id_rsa && \
+    chmod 600 /root/.ssh/id_rsa.pub
+
+CMD /usr/sbin/sshd -D & dockerd-entrypoint.sh --dns 130.37.236.49
