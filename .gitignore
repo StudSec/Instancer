@@ -3,6 +3,8 @@ challenges/Challenges
 keys/
 *.sqlite3
 
+# Pycharm
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
