@@ -54,6 +54,24 @@ class ChallengeState:
                 return None
             else:
                 return res[0]
+            
+    async def set_port(self, port: int):
+        async with connect(self.db.file) as db:
+            await db.execute("UPDATE challenges SET port=?\
+                WHERE name=? AND user_id=?",
+                             (port, self.challenge_name, self.user_id))
+            await db.commit()
+
+    async def get_port(self) -> int | None:
+        async with connect(self.db.file) as db:
+            res = await db.execute("SELECT port FROM challenges \
+                WHERE name=? AND user_id=? LIMIT 1",
+                                   (self.challenge_name, self.user_id))
+            res = await res.fetchone()
+            if res is None:
+                return None
+            else:
+                return res[0]
 
     async def delete(self):
         async with connect(self.db.file) as db:
@@ -85,6 +103,7 @@ class Database():
                 server INTEGER, \
                 state TEXT NOT NULL,\
                 reason TEXT NOT NULL,\
+                port INTEGER,\
                 PRIMARY KEY (name, user_id) \
             )")
             await db.commit()

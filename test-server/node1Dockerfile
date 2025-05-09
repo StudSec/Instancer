@@ -1,10 +1,11 @@
-FROM ubuntu:24.04                                                              
+FROM docker:dind
 
-RUN apt-get update && apt-get install -y openssh-server docker-compose-v2 jq
+RUN apk add --update bash openssh-server openrc
+RUN apk add python3 py-pip py3-psutil
 
-RUN mkdir /var/run/sshd
+RUN pip install --break-system-package pwntools
 
-RUN echo "root:password" | chpasswd
+RUN ssh-keygen -A
 
 RUN echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config
 
@@ -23,4 +24,4 @@ RUN echo "$SSH_PRV_KEY" > /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa && \
     chmod 600 /root/.ssh/id_rsa.pub
 
-CMD ["/usr/sbin/sshd", "-D"]
+CMD /usr/sbin/sshd -D & dockerd-entrypoint.sh --dns 130.37.236.49
