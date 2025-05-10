@@ -56,6 +56,7 @@ async def start_challenge(
         state = await ChallengeState(app.extra["config"].database, service_name, user_id).get()
         if state is not None:
             if state == "running":
+                await challenge.working_set.remove(user_id)
                 return {"running"}
 
         if await challenge.working_set.contains_or_insert(user_id):
@@ -87,6 +88,7 @@ async def stop_challenge(
         state = await ChallengeState(app.extra["config"].database, service_name, user_id).get()
         if state is not None:
             if state != "running":
+                await challenge.working_set.remove(user_id)
                 return {"not running"}
 
         if await challenge.working_set.contains_or_insert(user_id):
@@ -122,11 +124,15 @@ async def challenge_status(
         }
         if state is not None:
             port = await ChallengeState(app.extra["config"].database, service_name, user_id).get_port()
-            server = executor.config.servers[ await ChallengeState(app.extra["config"].database, service_name, user_id).get_server() ]
+            server_id = await ChallengeState(app.extra["config"].database, service_name, user_id).get_server()
+            if server_id:
+                server_ip = executor.config.servers[ server_id ].ip
+            else:
+                server_ip = ""
             state, reason = state
             r['state'] = state
             if state == "running":
-                r['url'] = challenge.url.replace("{{PORT}}", str(port)).replace("{{IP}}", server.ip)
+                r['url'] = challenge.url.replace("{{PORT}}", str(port)).replace("{{IP}}", server_ip)
             if state == "failed":
                 r['reason'] = reason
         return r
