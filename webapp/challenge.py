@@ -158,7 +158,7 @@ class Challenge:
 
         hostname = "0.0.0.0"
 
-        cmd = f"cd {execution_path} && bash {run_script_path} --flag '{self.flag}' --hostname {hostname} --port {port}"
+        cmd = f"cd {execution_path} && COMPOSE_PROJECT_NAME={user_id} bash {run_script_path} --flag '{self.flag}' --hostname {hostname} --port {port}"
         result = await executor.run(target_server, cmd, timeout=100000)
         log.info(f"  + command resulted: {result}")
 
