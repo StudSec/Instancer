@@ -125,7 +125,7 @@ async def challenge_status(
         if state is not None:
             port = await ChallengeState(app.extra["config"].database, service_name, user_id).get_port()
             server_id = await ChallengeState(app.extra["config"].database, service_name, user_id).get_server()
-            if server_id:
+            if server_id is not None:
                 server_ip = executor.config.servers[ server_id ].ip
             else:
                 server_ip = ""
