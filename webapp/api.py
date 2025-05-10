@@ -14,7 +14,7 @@ security = HTTPBasic()
 
 background_tasks = set()
 
-ALPHANUM = "^[a-z0-9_]*$"
+ALPHANUM = r"^[a-z0-9\-_]*$"
 
 
 def does_challenge_exist(app: FastAPI, service_name: str):
@@ -121,10 +121,11 @@ async def challenge_status(
             "state": 'not started',
         }
         if state is not None:
+            port = await state.get_port()
             state, reason = state
             r['state'] = state
             if state == "running":
-                r['port'] = reason
+                r['url'] = challenge.url.replace("{{PORT}}", str(port))
             if state == "failed":
                 r['reason'] = reason
         return r

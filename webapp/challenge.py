@@ -19,6 +19,7 @@ class Challenge:
         self.name = name
         self.path = path
         self.flag = flag
+        self.url = None
 
         class WorkingSet:
             def __init__(self) -> None:
@@ -56,11 +57,10 @@ class Challenge:
             await db_entry.set("stopped")
         else:
             log.info("  + check OK! challenge up!")
-            await db_entry.set("started")
+            await db_entry.set("running")
 
 
     async def retrieve_state(self, executor, user_id: str):
-
         log.info(f"checking state of challenge! {self.name} {user_id}")
         state = ChallengeState(executor.config.database, self.name, user_id)
         if await state.get() is None:
@@ -68,7 +68,6 @@ class Challenge:
 
         async def retrieve(server):
 
-            # TODO
             port = await state.get_port()
             if (port is None):
                 return None
@@ -87,8 +86,9 @@ class Challenge:
             cmd += f"--handout-path {challenge_path / "Handout"} "
             cmd += f"--deployment-path {challenge_path / "Source"} "
 
-            result = await executor.run(server, cmd, timeout=1)
-            
+            # result = await executor.run(server, cmd, timeout=1)
+            result = '{"test": ""}'
+
             # perhaps a better way to do this than checking the string?
             return result
            
@@ -158,12 +158,12 @@ class Challenge:
 
         hostname = "0.0.0.0"
 
-        cmd = f"cd {execution_path} && bash {run_script_path} --flag {self.flag} --hostname {hostname} --port {port}"
-        result = await executor.run(target_server, cmd)
+        cmd = f"cd {execution_path} && bash {run_script_path} --flag '{self.flag}' --hostname {hostname} --port {port}"
+        result = await executor.run(target_server, cmd, timeout=100000)
         log.info(f"  + command resulted: {result}")
 
         if result is None:
-            await state.set("failed", "starting run.sh failedg")
+            await state.set("failed", "starting run.sh failed")
             await self.working_set.remove(user_id)
         
 
@@ -206,6 +206,7 @@ def parse_challenges(path: str) -> dict[str, Challenge]:
     for challenge_id, challenge in set.challenges.items():
         path = challenge.path.removeprefix("/challenges/") # here is tight coupling :(
         flag = list(challenge.flag.keys())[0]
-        parsed_challenges[challenge.name] = Challenge(challenge.name, path, flag)
+        parsed_challenges[challenge.uuid] = Challenge(challenge.uuid, path, flag)
+        parsed_challenges[challenge.uuid].url = challenge.url[0]
 
     return parsed_challenges
