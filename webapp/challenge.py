@@ -180,7 +180,7 @@ class Challenge:
 
         port = await state.get_port()
 
-        destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / f"Source/destroy.sh --port {port}"
+        destroy_script_path : pathlib.Path = pathlib.Path(target_server.path) / self.path / f"Source/destroy.sh --team {user_id}"
         execution_path = destroy_script_path.parent
         cmd = f"cd {execution_path} && bash {destroy_script_path}"
         log.info(f"  + destroy script: {destroy_script_path}")
