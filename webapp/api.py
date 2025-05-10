@@ -121,11 +121,12 @@ async def challenge_status(
             "state": 'not started',
         }
         if state is not None:
-            port = await state.get_port()
+            port = await ChallengeState(app.extra["config"].database, service_name, user_id).get_port()
+            server = executor.config.servers[ await ChallengeState(app.extra["config"].database, service_name, user_id).get_server() ]
             state, reason = state
             r['state'] = state
             if state == "running":
-                r['url'] = challenge.url.replace("{{PORT}}", str(port))
+                r['url'] = challenge.url.replace("{{PORT}}", str(port)).replace("{{IP}}", server.ip)
             if state == "failed":
                 r['reason'] = reason
         return r
