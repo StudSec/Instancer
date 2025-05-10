@@ -40,7 +40,8 @@ class Challenge:
 
             async def remove(self, user_id):
                 async with self.lock:
-                    self.challenges.remove(user_id)
+                    if user_id in self.challenges:
+                        self.challenges.remove(user_id)
 
         self.working_set = WorkingSet()
     
